@@ -1,0 +1,859 @@
+---
+title: "fin_proj"
+author: "Srija Vakiti & Vaishnavi Asuri"
+date: "2022-12-03"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(include = FALSE)
+```
+
+
+For the final project we decided to work with an observational dataset from **ai-jobs.net** that contains different occupations that one can explore with a data science degree, and their respective salaries. This dataset also contains other factors that influence career decisions like the year of the job posting, company name, job location, and the remote working ratio. 
+
+**ai-jobs.net** is a prime source site for jobs in the Artificial Intelligence, Machine Learning, and Big Data industries. 
+
+
+
+This project has 3 main aims:
+
+1. To perform exploratory data analysis on the dataset taken and understand it better
+2. To perform data manipulations and gain inferences from the data
+3. To predict the job listings for the most in-demand jobs in 2023 
+
+
+
+##**LOADING THE DATASET**
+
+Let us first load the required libraries:
+
+```{r,  results='hide', message=FALSE}
+library(dplyr)
+library(readr)
+library(broom)
+library(tidyverse)
+```
+
+```{r}
+#loading the dataset present in the computer into salaries_df variable using read_csv() function
+salaries_df=read_csv("C:\\Users\\asuri\\OneDrive\\Desktop\\infosci\\PROJECT\\salaries.csv", show_col_types = FALSE)
+
+#displaying the dataframe
+head(salaries_df)
+```
+
+## AIM 1. EXPLORATORY DATA ANALYSIS
+
+We will first explore this dataset and gain information regarding its components. 
+
+```{r}
+#finding out the dimensions of the dataset
+dim(salaries_df)
+
+#listing out the columns involved
+colnames(salaries_df)
+
+#finding out the timespan for this dataset
+unique(salaries_df$work_year)
+
+#finding out the types of job postings in this dataset 
+unique(salaries_df$job_title)
+```
+
+```{r}
+#finding out what is the natures of the jobs involved in this dataset
+unique(salaries_df$employment_type)
+
+#finding out what types of job experience is needed for the jobs in this dataset
+unique(salaries_df$experience_level)
+
+#finding out the locations of the companies in this dataset
+unique(salaries_df$company_location)
+
+#finding out what is the size of the companies that are offering jobs
+unique(salaries_df$company_size)
+
+#finding out the remote working ratio for the jobs in this dataset
+unique(salaries_df$remote_ratio)
+```
+
+
+**Summary of the dataset:** 
+
+* This dataset consists of 1264 job postings for 63 positions related to the Data Science field, and spans over 3 years (2020, 2021 and 2022). 
+
+* This dataset contains 9 variables:
+
+  + Working Year 
+  + Job Title
+  + Employment status 
+  + Experience level
+  + Salary
+  + Employee location 
+  + Company location 
+  + Company size      
+  + Remote working ratio
+
+* These jobs are by  small, mid and large sized companies located in 59 countries. 
+
+* The job titles are as follows:
+
+[1] "Data Engineer"                            "Data Operations Analyst"                 
+ [3] "ML Engineer"                              "Machine Learning Engineer"               
+ [5] "Analytics Engineer"                       "Data Scientist"                          
+ [7] "Data Analyst"                             "Data Architect"                          
+ [9] "Data Operations Engineer"                 "3D Computer Vision Researcher"           
+[11] "BI Analyst"                               "Marketing Data Analyst"                  
+[13] "Data Science Lead"                        "Power BI Developer"                      
+[15] "Product Data Scientist"                   "Data Science Consultant"                 
+[17] "Data Manager"                             "BI Data Analyst"                         
+[19] "Big Data Engineer"                        "Principal Data Architect"                
+[21] "Machine Learning Manager"                 "Applied Scientist"                       
+[23] "Lead Data Scientist"                      "Lead Machine Learning Engineer"          
+[25] "NLP Engineer"                             "Research Scientist"                      
+[27] "Data Analytics Engineer"                  "ETL Developer"                           
+[29] "AI Scientist"                             "Data Scientist Lead"                     
+[31] "Data Science Manager"                     "Data Specialist"                         
+[33] "Business Data Analyst"                    "Applied Machine Learning Scientist"      
+[35] "Machine Learning Research Engineer"       "Machine Learning Scientist"              
+[37] "Machine Learning Developer"               "Data Engineering Manager"                
+[39] "Director of Data Science"                 "Financial Data Analyst"                  
+[41] "Computer Vision Software Engineer"        "Data Analytics Consultant"               
+[43] "Product Data Analyst"                     "Machine Learning Infrastructure Engineer"
+[45] "Applied Data Scientist"                   "Cloud Data Architect"                    
+[47] "Data Analytics Manager"                   "Lead Data Engineer"                      
+[49] "Head of Machine Learning"                 "Data Science Engineer"                   
+[51] "Head of Data Science"                     "Computer Vision Engineer"                
+[53] "Head of Data"                             "Principal Data Analyst"                  
+[55] "Data Analytics Lead"                      "Principal Data Scientist"                
+[57] "Principal Data Engineer"                  "Lead Data Analyst"                       
+[59] "Director of Data Engineering"             "Cloud Data Engineer"                     
+[61] "Big Data Architect"                       "Staff Data Scientist"                    
+[63] "Finance Data Analyst"     
+
+
+
+* The nature of these jobs can be:
+
+PT: Part-time
+FT: Full-time
+CT: Contract
+FL: Freelance
+
+
+* The experience levels of the jobs are classified into 4 types:
+
+EN: Entry-level / Junior
+MI: Mid-level / Intermediate
+SE: Senior-level / Expert
+EX: Executive-level / Director
+
+
+* The overall amount of work done remotely can be expressed through a remote working ratio 0, 50 or 100 where:
+
+0 = No remote work (less than 20%)
+50 = Partially remote
+100 = Fully remote (more than 80%)
+
+
+##AIM 2. PERFORMING DATA MANIPULATIONS AND GAINING INFERENCES 
+
+The countries in the dataset are represented as abbreviations. These abbreviations are country codes that can be expanded with the help of Wikipedia. We will now load the respective table from Wikipedia, and join it with our `salaries_df` dataset to find out the full forms of the countries.
+
+We will also, for gaining more inferences, add another dataframe from Numbeo that contains the cost of living indices of various countries. However, the names of 14 countries (US, UK, Turkey, Australia, Czech Republic, France, Netherlands, Bolivia, Phillipines, UAE, Russia, Iran, Moldova, and Vietnam) in the dataset do not match with their respective Wikipedia counterparts. 
+
+We will, therefore, rename them to have common names so that we can join them easily. 
+
+**WIKIPEDIA DATAFRAME**
+
+```{r}
+#Importing a table from Wikipedia ("https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes") containing country codes
+
+library(rvest)
+countryURL<-read_html("https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes")
+#print(countryURL)
+all_tables<-countryURL %>% html_table(fill=TRUE)
+code_table1<-all_tables[[1]]
+
+#displaying resultant table
+names(code_table1) <- code_table1[1,]
+code_table1 <- code_table1[-1,]
+code_table1
+
+#dropping unnecessary columns
+code_table2 <- code_table1[,-c(2, 3, 5:8)] %>% 
+  rename(`Country_Name` = `Country name[5]`) %>% rename(`company_location` = `Alpha-2 code[5]`)
+code_table2
+```
+
+
+```{r}
+#joining both the tables to understand country codes better
+code_table2<-left_join(salaries_df, code_table2,by = "company_location")
+code_table2
+
+#is.na(code_table2)
+```
+
+
+
+```{r}
+#Checking country names
+unique(code_table2$`Country_Name`)
+
+```
+
+```{r}
+
+#renaming the 14 countries to have a common name for easy reference 
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="United States of America (the)"]<- "United States"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="United Kingdom of Great Britain and Northern Ireland (the)"]<- "United kingdom"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="Australia [b]" ]<- "Australia"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="Czechia [i]" ]<- "Czech Republic"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="Türkiye [ab]" ]<- "Turkey"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="France [l]" ]<- "France"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="Netherlands (the)" ]<- "Netherlands"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="Bolivia (Plurinational State of)" ]<- "Bolivia"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="Philippines (the)" ]<- "Philippines"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="United Arab Emirates (the)" ]<- "United Arab Emirates"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="Russian Federation (the) [v]" ]<- "Russia"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="Iran (Islamic Republic of)" ]<- "Iran"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="Moldova (the Republic of)" ]<- "Moldova"
+
+code_table2$`Country_Name`[code_table2$`Country_Name` =="Viet Nam [af]" ]<- "Vietnam"
+```
+
+```{r}
+#displaying final dataset
+code_table2
+```
+
+
+**NUMBEO COST OF LIVING DATAFRAME**
+```{r}
+#Importing a table from Numbeo ("https://www.numbeo.com/cost-of-living/rankings_by_country.jsp?title=2022&displayColumn=0") that conytains cost of living indices 
+
+colURL<-read_html("https://www.numbeo.com/cost-of-living/rankings_by_country.jsp?title=2022&displayColumn=0")
+print(colURL)
+
+all_tables1<-colURL %>% html_table(fill=TRUE)
+costofliving<-all_tables1[[2]]
+
+#displaying resultant table
+costofliving %>% select(Country, `Cost of Living Index`)
+costofliving
+
+#dropping unnecessary columns
+
+
+#renaming column names and displaying the resultant dataframe
+colnames(costofliving)[2]<-"Country_Name"
+costofliving
+```
+
+```{r}
+#joining into the final table
+fin_df<-left_join(code_table2, costofliving, by = "Country_Name")
+#final_df<-final_df[,-c(11:21)]
+fin_df
+
+#is.na(col_table)
+```
+
+
+```{r}
+unique(fin_df$`Country_Name`)
+```
+
+```{r}
+fin_df %>% filter(!is.na(`Cost of Living Index`))
+```
+
+We will determine whether a COLI is high or low by comparing it with the average of all COL indices in this dataset. 
+
+```{r}
+#calculating the average cost of living index
+fin_df <- fin_df %>% filter(!is.na(`Cost of Living Index`))
+cost<-unique(fin_df$`Cost of Living Index`)
+
+#final average cost of living 
+mean(cost)
+
+#creating new column that tells us about the nature of the cost of living
+fin_df %>% mutate(COL_type= ifelse(`Cost of Living Index`>cost, "HIGH", "LOW")) %>% select(!Rank)
+```
+
+**Summary:**
+
+We first loaded a Wikipedia table that contained information regarding the country codes to understand the country codes present in our source dataset `salaries_df`. We dropped unnecessary columns, renamed the the rest of them, and joined them with our source dataset. The resultant dataset produced was `code_table2`. We then renamed some of the country names in `code_table2` so that we could easily refer to them later. 
+
+In the next part, we loaded a NUMBEO dataset that contained the Cost of Living Index of each country and joined it with our `code_table2`. This was followed by adding another column that determines the nature of a country's cost of living and dropping some NA value rows and an unnecessary column (Rank). The resultant table was `fin_df`. 
+
+Our final dataset (`fin_df`) is now ready. This will henceforth be used for all kinds of analyses performed. 
+
+
+
+##INFERENCING FROM THE RESULTANT DATASET
+
+We decided to make general inferences regarding the dataset and some additional inferences in accordance to the following categories:
+
+I) Salary
+II) Country
+III) Cost of living
+IV) Remote Working Ratio
+V) Demand and working 
+
+**GENERAL INFERENCES**
+```{r}
+
+#finding out the work year distribution for this dataset
+pie_data <- fin_df %>% group_by(work_year) %>% tally() %>% 
+  mutate(prop = round(n / sum(n) *100)) %>%
+  mutate(ypos = 100-cumsum(prop) +0.5*prop) 
+pie_data %>%
+  ggplot(aes(x="",y=prop,fill=as.factor(work_year))) +
+  geom_bar(stat = "identity") +
+  ggtitle("Work Year Distribution")+ coord_polar("y", start = 0) +theme_void() +
+  geom_text(aes(y = ypos, label = paste(prop,"%")))
+
+```
+76% of the dataset contains jobs from 2022, while 6% is from 2020. Therefore, this is a relatively new dataset. 
+
+```{r}
+#calculating the rate of job increase and plotting the job count across the 3 years: 2020, 2021, and 2022
+
+#install.packages("plotly")
+library(plotly)
+ds_jobs<-salaries_df%>%group_by(work_year)%>%summarise(Count=length(experience_level)) %>% mutate(Diff_year = work_year - lag(work_year),rate = Count - lag(Count), Rate_percent = (rate / Diff_year)/Count * 100) %>% replace(is.na(.), 0)
+
+ds_jobs
+
+#calculating the rate of growth of jobs
+Average_growth = mean(ds_jobs$Rate_percent, na.rm = TRUE)
+Average_growth
+
+#plotting the number of jobs against the years they were posted
+v1<-plot_ly(ds_jobs, x= round(ds_jobs$work_year), y=~Count, type='scatter', mode='lines', line=list(color='#00FF00')) %>% layout(title='Number of Jobs Per Year', xaxis=list(title='Year'))
+v1
+
+```
+From the graph and table, we can inference that data Science jobs have been increasing at an annual rate of 47.79333%. 
+
+#JOB DEMAND IN THE DATA SCIENCE INDUSTRY
+
+```{r, message=FALSE}
+
+#determining the employment type popularity in the Data Science industry
+
+#loading the required libraries
+library(gridExtra)
+
+p1<- salaries_df %>% ggplot(aes(x=employment_type)) +geom_bar(color="black", fill= "brown") 
+
+p2<- salaries_df %>% group_by(employment_type) %>% tally() %>% 
+  mutate(prop = round(n / sum(n) *100)) %>%
+  mutate(ypos = 100-cumsum(prop) +0.5*prop) %>%
+  ggplot(aes(x="",y=prop,fill=as.factor(employment_type))) +
+  geom_bar(stat = "identity") +
+  ggtitle("Employment Nature Distribution")+ coord_polar("y", start = 0) +theme_void() + geom_text(aes(y = ypos, label = paste(prop,"%")))
+
+grid.arrange(p1,p2, nrow= 1)
+```
+
+From the graph we can infer that most of the DS jobs (98%) in demand are full-time jobs. 
+
+```{r, warning=FALSE}
+#plotting the job titles against the frequency of job postings
+library(ggplot2)
+fin_df %>% ggplot(aes(job_title)) + geom_histogram(stat = "count", color="black", fill="light blue") +
+  theme(axis.text.x = element_text(angle = 85, hjust = 1, size = 5))+
+  xlab("Job Title") + ylab("Frequency")
+```
+
+The above graph can be narrowed down to:
+
+```{r}
+#determining the five most in-demand jobs 
+demand_jobs<-fin_df %>% group_by(job_title) %>% tally() %>% arrange(desc(n)) 
+top_demand_jobs<-head(demand_jobs,5)
+top_demand_jobs
+
+top_demand_jobs %>% arrange(-(n)) %>% ggplot(aes(y=job_title, x=n,fill=job_title)) + geom_bar(stat = 'identity', color="black") + ylab("Job Title") + xlab("Frequency") + ggtitle("TOP 5 JOBS IN DATA SCIENCE INDUSTRY")
+
+```
+From the above graphs, we can infer that Data Scientists, Data Engineers and Data Analysts jobs are most frequently posted by companies. This is followed by Machine Learning Engineer and Analytics Engineer job postings.
+
+```{r}
+#determining the jobs least in demand
+job_occurences<-data.frame(table(fin_df$job_title))
+job_occurences %>% rename(Job_title = Var1) %>% arrange(Freq)
+```
+
+**Summary of general inference:**
+
+The top 5 jobs in highest demand are:
+
+Data Scientist	(305 job postings)			
+Data Engineer	(265 job postings)			
+Data Analyst	(165 job postings)			
+Machine Learning Engineer	(74 job postings)			
+Analytics Engineer	(39	job postings)
+
+The top 5 jobs in least demand are:
+
+Big Data Architect (1 job posting)			
+Cloud Data Architect (1 job posting)	
+Data Analytics Consultant (1 job posting)		
+Data Analytics Lead (1 job posting)			
+Data Science Lead (1 job posting)
+
+
+**SALARY**
+We will now make some salary based inferences. 
+
+```{r}
+#finding out the average salary of a data science employee
+mean(fin_df$salary_in_usd)
+```
+
+Let's use a histogram to check the accuracy of this
+
+```{r}
+#plotting a histogram
+x <- fin_df$salary_in_usd
+h<-hist(x, breaks=10, col="grey", xlab="Average Salary",
+   main="Histogram with Curve")
+xfit<-seq(min(x),max(x),length=40)
+yfit<-dnorm(xfit,mean=mean(x),sd=sd(x))
+yfit <- yfit*diff(h$mids[1:2])*length(x)
+lines(xfit, yfit, col="blue", lwd=2)
+```
+
+This histogram is a poor method for determining the shape of a distribution because it is so strongly affected by the number of bins used. Therefore, we use Kernal density plots, which are usually a much more effective way to view the distribution of the salary variable. 
+
+```{r}
+d <- density(fin_df$salary_in_usd)
+plot(d, main="Kernel Density of Miles Per Gallon")
+polygon(d, col="light blue", border="black")
+```
+
+From the plot, we can determine that on an average, data science employees earn about 125,544$ per year.
+
+
+```{r}
+#plotting the salaries based on experience level
+#install.packages(ggstar)
+library(ggstar)
+
+options(scipen= 900)
+
+experience_level_df<-fin_df %>% group_by(experience_level) %>% summarize(avg_salaryy=mean(salary_in_usd)) %>% arrange(-avg_salaryy)
+
+experience_level_df
+
+experience_level_df %>%  ggplot(aes(color=experience_level)) + geom_star(aes(y=experience_level, x=avg_salaryy, size=avg_salaryy, fill=experience_level), aplha=0.5) + ylab("Experience level") + xlab("Average Salary") + ggtitle("AVERAGE SALARY WRT EXPERIENCE LEVEL")
+  
+```
+From the above graph, the linearity between experience level and the average salary earned is pretty evident. As the experience level increases, the average salary also increases. 
+
+
+Let us calculate the jobs with the highest average salaries
+```{r}
+
+#calculating the average salaries of all job titles and finding the highest paid jobs
+options(scipen= 900)
+fin_df %>% group_by(job_title) %>% 
+  summarize(avg_salary = mean(salary_in_usd), `Cost of Living Index` = mean(`Cost of Living Index`))%>%
+  arrange(desc(avg_salary)) %>% ggplot(aes(x = job_title, y = avg_salary)) +
+  geom_point(aes(color= `Cost of Living Index`),size = 2.5, shape = 17) + xlab("Job Title") + ylab("Average Salary") + ggtitle("AVERAGE SALARY WRT JOB TITLES (according to COL index)") +
+  
+  theme(axis.text.x = element_text(angle = 85, hjust = 1, size = 5))
+
+options(repr.plot.width = 15, repr.plot.height = 30)
+
+#determining the jobs with highest salaries
+fin_df %>% group_by(job_title) %>% summarize(avg_salary = mean(salary_in_usd)) %>% arrange(desc(avg_salary)) 
+
+#determining the jobs with lowest salaries
+fin_df %>% group_by(job_title) %>% summarize(avg_salary = mean(salary_in_usd))%>% arrange(avg_salary)
+
+```
+This graph can be narrowed down to:
+
+```{r}
+#determining the five highest paid jobs 
+high_pay_df<-fin_df %>% group_by(job_title) %>% summarize(avg_salary = mean(salary_in_usd)) %>% arrange(desc(avg_salary)) 
+top_pay<-head(high_pay_df,5)
+top_pay
+
+top_pay %>% ggplot(aes(x=job_title, y=avg_salary,fill=job_title)) + geom_bar(stat = 'identity', color="black", alpha=0.5) + xlab("Job Title") + ylab("Frequency") + ggtitle("TOP 5  HIGHLY PAID JOBS IN DATA SCIENCE") +   
+  theme(axis.text.x = element_text(angle = 100, hjust = 1, size = 5)) 
+
+options(repr.plot.width = 15, repr.plot.height = 30)
+```
+
+
+**Summary: **
+
+On an average, Data Science employees earn about 125544.2$ per year.
+
+The top 5 highest paying jobs along with their average annual salaries are: 
+
+Data Analytics Lead	(405000 USD)			
+Principal Data Engineer (328333 USD)			
+Cloud Data Architect (250000 USD)			
+Principal Data Scientist (214293.571 USD)			
+Financial Data Analyst (208333.333 USD)		
+
+The top 5 least paying jobs along with their average annual salaries are:
+
+3D Computer Vision Researcher	(4244.333 USD)			
+Power BI Developer (5409 USD)			* 
+Product Data Scientist (8000 USD)		
+Machine Learning Research Engineer (16085.500 USD)
+NLP Engineer (33733.667 USD)
+
+
+
+**COUNTRY-BASED ANALYSIS**
+
+In this category, we made inferences of the data with respect to the company and employee locations. 
+
+```{r}
+#plotting countries with highest average salary
+
+fin_df %>% group_by(Country_Name) %>% summarize(avg_salary = mean(salary_in_usd)) %>% ggplot(aes(x = Country_Name, y = avg_salary)) + ylab("Average Salary of a Data Science Employee") + xlab("Country Name") + ggtitle("COUNTRY-WISE SALARY DISTRIBUTION")+
+  geom_bar(color= "black", stat = 'identity', fill= "light green") +theme(axis.text.x = element_text(angle = 85, hjust = 1, size = 5))
+
+options(repr.plot.width = 15, repr.plot.height = 30)
+```
+This graph can be narrowed down to:
+
+```{r}
+highest_countries<-fin_df %>% group_by(Country_Name) %>% summarize(avg_salary = mean(salary_in_usd)) %>% arrange(desc(avg_salary))
+highest_countries_df<-head(highest_countries,5)
+
+highest_countries_df %>% ggplot()+ geom_point(stat="identity",aes(x=avg_salary, y=Country_Name), size=3.5) + xlab("Average Salary") + ylab("Country Name") + ggtitle("TOP 5 HIGHEST PAYING COUNTRIES FOR DS EMPLOYEES")
+
+```
+It can be inferred that Puerto Rico pays its Data Science employees the highest average salary in the world. 
+
+```{r}
+#plotting country-wise demand for Data Science jobs
+country_salary<-select(fin_df, Country_Name, salary_in_usd)
+
+head(country_salary)
+
+highest_country_salary<-country_salary%>%group_by(Country_Name)%>%summarise(salary_maximum=max(salary_in_usd))%>%
+  top_n(6)
+
+highest_country_salary
+
+#entering the respective cost of living indices of the countries
+highest_country_salary$CoL<-c(70.22,77.03,30.49,66.53,35.26, 70.13)
+
+#displaying result
+highest_country_salary
+```
+
+```{r}
+country_wise<-fin_df %>% group_by(job_title, Country_Name) %>% summarise(n = n()) 
+
+country_wise <- country_wise %>% rename(freq_of_jobs = n) %>% arrange(desc(freq_of_jobs))
+country_wise
+
+```
+
+```{r}
+#country-wise job demand
+fin_df %>% ggplot(aes(Country_Name)) + geom_histogram(stat = "count", fill = 'brown') + theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 5))+ xlab("Countries") + ylab("Frequency")
+```
+
+From the graph it is apparent that the **US has the highest demand for dat science jobs**.
+
+
+We will now try to summarize the inferences based on job demands and countries (with frequency) into one graph:
+
+```{r}
+#calculating job demands in accordance to the countries  
+country_wise %>% ggplot(aes(Country_Name, job_title)) + geom_point(aes(size = freq_of_jobs))+ 
+  theme(axis.text.x = element_text(angle = 85, hjust = 1, size = 5))+
+   theme(axis.text.y = element_text(angle = 15, hjust = 1, size = 5))+
+  xlab("Countries") + ylab("Job Titles") + ggtitle("JOB DEMANDS WRT COUNTRIES") 
+```
+
+**COST OF LIVING**
+
+Cost of living (COL) is defined as the amount of money required to cover necessary expenses to maintain a certain lifestyle standard in a particular place and time. Necessary expenses can include housing, food, taxes, health care, clothing, education, entertainment and transportation.
+
+Each country's cost of living is determined with a cost of living index, most of which set a base cost of living, often represented by 100. The base can either be the cost of living in one region or an average of many—for instance, our current dataset pegs New York as the base city and thus sets its cost of living index as 100. All other regions are measured against this base region and assigned a cost of living number accordingly. 
+
+A cost of living index can help a person determine whether the income or salary being earned is enough to cover basic expenses. From there, a person can assess whether there's enough extra income left over to save. 
+
+This dataset uses COL indices determined in 2022 to assess all of the countries' data. 
+
+
+```{r}
+emply_loc_salary<-select(fin_df, employee_residence, salary_in_usd)
+
+head(emply_loc_salary)
+
+highest_salary_emply_loc<-emply_loc_salary%>%
+  group_by(employee_residence)%>%
+  summarise(Salary_highest=max(salary_in_usd))%>%
+  top_n(6)
+
+highest_salary_emply_loc
+
+highest_salary_emply_loc$CoL<- c(24.43,77.03,37.02, 30.49, 66.53, 35.26, 70.13)
+
+highest_salary_emply_loc
+
+```
+Some of the highest paying data science jobs are located in the US, Japan, and Russia. However, when the concept of savings is taken into account, a lot of company locations fail to meet the hospitality goal. 
+
+Let us attach the respective COL indices to expand on this assumption:
+
+```{r}
+comp_loc_salary<-select(fin_df, company_location, salary_in_usd)
+
+head(comp_loc_salary)
+
+highest_salary_comp_loc<-comp_loc_salary%>%
+  group_by(company_location)%>%
+  summarise(salary_max=max(salary_in_usd))%>%
+  top_n(6)
+
+highest_salary_comp_loc
+
+highest_salary_comp_loc$CoL<- c(70.22,77.03,30.49,66.53,35.26, 70.13)
+
+highest_salary_comp_loc
+```
+
+```{r}
+highest_salary_comp_loc %>% ggplot(aes(size=CoL, color=company_location))+geom_point(aes(x=company_location, y=salary_max), alpha=0.6) + xlab("Company Location") + ylab("Maximum Salary offered") + ggtitle("COMPANY LOCATIONS WRT SALARY (with COL)")
+```
+
+For instance, when you take the above table and graph into consideration, companies in Nigeria and Puerto Rico pay the same salary (200,000$) to their employees. However, the cost of living index is way higher in Puerto Rico when compared to Nigeria Therefore, a higher amount of savings are made when you work in Nigeria when compared to Puerto Rico.  
+
+**REMOTE WORKING RATIO**
+After the pandemic, remote working availability became a crucial deciding factor for jobs. Remote working ratio is defined as the number of remote employees to the total number of employees in a company. 
+
+How do we know which companies encourage remote working?
+
+```{r}
+
+fin_df %>% group_by(company_size, remote_ratio) %>% tally() %>%
+  group_by(company_size) %>% 
+  mutate(remote_ratio = as.factor(remote_ratio),frac = (n/sum(n))*100) %>%
+  ggplot(aes(company_size, frac, fill = remote_ratio)) + 
+  geom_bar(stat = "identity")+
+  scale_fill_manual(values = c("pink","yellow","light green"))
+            
+```
+It seems that all companies are more open to remote workers. However, mid-sized companies are most open to remote workers as they have a slightly higher remote working ratio percentage.
+
+How do we know which countries encourage remote working?
+```{r}
+#determining the remote working ratios in accordance to countries
+
+avg_remote_ratio_df<-fin_df %>% group_by(Country_Name) %>% summarize(avg_remote_ratio=mean(remote_ratio)) 
+avg_remote_ratio_df
+
+country_ratio_df<-arrange(avg_remote_ratio_df,avg_remote_ratio_df$avg_remote_ratio)
+
+#plotting the countries wrt their average remote ratios
+country_ratio_df %>% ggplot(aes(fill=Country_Name)) +geom_col(aes(y=Country_Name, x=avg_remote_ratio))+ xlab("Average Remote Ratio") + ylab("Country") + ggtitle("COUNTRY-WISE REMOTE RATIO")+
+theme(axis.text.y = element_text(angle = 0, hjust = 1, size = 5), legend.position = 'NONE')
+```
+```{r}
+country_ratio_df
+```
+
+We can see that Albania, China, Honduras, Moldova, Switzerland and Vietnam have  non-remote workers while countries like Argentina, Chile, Croatia, Iran, a huge number of remote workers. 
+
+
+
+##AIM 3. PREDICTING JOB POSTINGS FOR 2023 
+
+It is evident now that Data Analytics Leads and Principal Data Engineers are very much demanded across the world, particularly in the US and they are paid the highest in Puerto Rico. 
+
+One might wonder if this demand pattern will stay the same or not. What about jobs in the next year? Will the same jobs still be in demand?
+
+We will first determine which jobs are mostly posted and then calculate the demand rate for jobs across the years.
+
+```{r}
+#determining the jobs most and least in demand
+job_occurences<-data.frame(table(fin_df$job_title, fin_df$work_year))
+job_occurences<-job_occurences %>% rename(Job_title = Var1) %>% arrange(desc(Freq))
+job_occurences<-job_occurences %>% rename(work_year = Var2)
+job_occurences
+```
+
+
+```{r}
+#plotting job demand across the years
+job_occurences %>% ggplot(aes(Job_title,work_year)) + 
+  geom_point(aes(color = Job_title, size = Freq), show.legend = FALSE) + ylab("Work Year")+ xlab("Job Title") + ggtitle("GROWTH IN DEMAND FOR JOBS W.R.T TIME") + theme(axis.text.x = element_text(angle = 85, hjust = 1, size = 5))
+  
+```
+From the graph, it is easy inferred that although Principal Data Analysts and Data Analytics Leads are most in demand now, the demand rate has been steadily increasing for data scientists, data engineers, data analysts, Analytics Engineers, and Machine Learning Engineers.
+
+Data scientist demand has been growing at a high rate across the years. 
+
+Let us use this information to predict the number of job postings for 2023. 
+```{r}
+#determining the number of job predictions in 2023 for jobs whose demand is gradually increasing
+Increasing <- c("Data Scientist", "Data Engineer", "Data Analyst", "Machine Learning Engineer")
+
+job_occurences %>% filter(Job_title %in% Increasing) %>%
+  ggplot(aes(as.integer(as.character(work_year)), Freq, color = Job_title)) + 
+  geom_point() + geom_line()
+```
+
+
+```{r}
+job_occurences %>% filter(Job_title %in% Increasing) %>% mutate(log_freq = log2(Freq)) %>%
+  ggplot(aes(as.integer(as.character(work_year)), log_freq, color = Job_title)) + 
+  geom_point() + geom_line()
+```
+Like the graphs show, Data Scientists have the highest growth rate in demand. We will be predicting the job postings for the most growing in-demand jobs for 2023. 
+
+In order to do this, we will use a linear regression model. This simple yet powerful model attempts to model the relationship between two variables by fitting a linear equation (i.e., a straight line) to the observed data. One variable is considered to be an explanatory variable (e.g. demand growth rate), and the other is considered to be a dependent variable (e.g. job posting count).
+
+We will 4 models for the four highest in-demand jobs. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#building a linear regression model to predict the number of Data Analyst jobs by 2023
+library(broom)
+betas_DA <- job_occurences%>% filter(Job_title == "Data Analyst") %>%
+  mutate(y = log2(Freq), x = as.integer(as.character(work_year))) %>% 
+  do(tidy(lm(y ~ x, data = .))) %>% 
+  .$estimate
+```
+```{r}
+DA_2023 <- 2^(betas_DA[1]+betas_DA[2]*2023)
+DA_2023
+```
+It is estimated that there will be around 471 job postings for Data Analyst Jobs in 2023. 
+
+Let us do the same for the other 3 positions:
+
+```{r}
+#building a linear regression model to predict the number of Data Scientist jobs by 2023
+
+betas_DS <- job_occurences%>% filter(Job_title == "Data Scientist") %>%
+  mutate(y = log2(Freq), x = as.integer(as.character(work_year))) %>% 
+  do(tidy(lm(y ~ x, data = .))) %>% 
+  .$estimate
+```
+```{r}
+DS_2023 <- 2^(betas_DS[1]+betas_DS[2]*2023)
+DS_2023
+```
+
+
+```{r}
+#building a linear regression model to predict the number of Data Engineer jobs by 2023
+
+betas_DE <- job_occurences%>% filter(Job_title == "Data Engineer") %>%
+  mutate(y = log2(Freq), x = as.integer(as.character(work_year))) %>% 
+  do(tidy(lm(y ~ x, data = .))) %>% 
+  .$estimate
+```
+```{r}
+DE_2023 <- 2^(betas_DE[1]+betas_DE[2]*2023)
+DE_2023
+```
+
+
+
+```{r}
+#building a linear regression model to predict the number of Data Analyst jobs by 2023
+
+betas_MLE <- job_occurences%>% filter(Job_title == "Machine Learning Engineer") %>%
+  mutate(y = log2(Freq), x = as.integer(as.character(work_year))) %>% 
+  do(tidy(lm(y ~ x, data = .))) %>% 
+  .$estimate
+```
+```{r}
+MLE_2023 <- 2^(betas_MLE[1]+betas_MLE[2]*2023)
+MLE_2023
+```
+
+Let us group them all in a table for ease of access:
+```{r}
+Job_2023 <- data.frame(Job_title = c("Data Analyst","Data Scientist","Data Engineer","Machine Learning Engineer"),
+           work_year = c(2023,2023,2023,2023),
+           Freq = c(DA_2023,DS_2023,DE_2023,MLE_2023))
+
+Job_2023
+```
+
+
+
+```{r}
+job_occurences <- job_occurences %>% mutate(work_year = as.integer(as.character(work_year)))
+job_trends <- rbind(job_occurences, Job_2023)
+job_trends
+```
+
+
+Let us nw plot the prediction results: 
+```{r}
+#plotting a graph that showcases the number of jobs predicted in 2023
+job_trends %>% filter(Job_title %in% Increasing) %>%
+  ggplot(aes(as.integer(as.character(work_year)), Freq, color = Job_title)) + 
+  geom_point() + geom_line()
+
+```
+From the graph, we can understand that Data Engineers will have the highest job postings in 2023. This will be followed closely by Data Scientist. Out of all 4, Machine Learning Engineers will have the least number of job postings in 2023. 
+
+
+These job posting prediction numbers can be individually seen as:
+```{r}
+#plotting the job posting trends across the years for the most in demand jobs 
+job_trends %>% filter(Job_title %in% Increasing) %>%
+  ggplot(aes(as.integer(as.character(work_year)), Freq)) + 
+  geom_point() + geom_line(aes(color = Job_title)) + facet_wrap(~ Job_title)
+```
+
+
+**CONCLUSION**
+In conclusion, Data Science has been steadily growing at an approximate rate of 48% per year. Despite having the highest demand for Data Science jobs, US does not pay the highest salaries to Data Science employees. Puerto Rico employees on the other hand, are paid the highest on an average. 
+
+Savings play a huge role in salary choices--employees in countries with low COL will make higher savings than employees residing in countries with high COL even if the pay is equal. 
+
+Mid-sized companies have the highest acceptance for remote workers. Countries like Vietnam and Switzerland have companies and employees who prefer to work in-person. 
+
+Though Data Analyst Leads are paid the highest, the demand rate for Data Scientists is the highest and is predicted to be 478 in 2023 on www.aijobs.net. 
+
+**LIMITATIONS IN ASSUMPTIONS**
+
+Although we have used salary, remote ratio and COL as factors to determine which country is desirable, a lot of other factors should also be kept in mind. These include:
+
+  + Climate
+  + Economic and Political Stability
+  + Health Services
+  + Legal System and Degree of Civil Rights
+  + Safety (Crime Index)
+  + Popularity
+
+
