@@ -1,0 +1,1 @@
+# Data-Science-Global-Job-Market-Analysis[DATA SCIENCE GLOBAL JOB MARKET ANALYSIS.pdf](https://github.com/VaishnaviAsuri/Data-Science-Global-Job-Market-Analysis/files/10379504/DATA.SCIENCE.GLOBAL.JOB.MARKET.ANALYSIS.pdf)
